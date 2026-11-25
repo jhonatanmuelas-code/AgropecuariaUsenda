@@ -608,7 +608,8 @@
     }, function (e) {
       if (e && e.config) abrirEntrar('Falta poner la dirección de la hoja en el archivo config.js.');
       else if (e && e.html) abrirEntrar('La hoja respondió con una página y no con datos. Revise que la implementación de Apps Script diga «Cualquier persona».');
-      else abrirEntrar('Sin internet. Para entrar se necesita conexión; después la app aguanta sin señal.');
+      else if (navigator.onLine === false) abrirEntrar('Sin internet. Para entrar se necesita conexión; después la app aguanta sin señal.');
+      else abrirEntrar('No se pudo conectar con la hoja. Revise el internet. Si el internet funciona, en Apps Script la implementación debe estar en «Cualquier persona» y con «Nueva versión», y config.js debe tener la URL que termina en /exec.');
     });
   }
 

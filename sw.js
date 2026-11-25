@@ -1,10 +1,12 @@
 /*
- * Guarda los archivos de la app en el celular para que abra sin internet.
+ * Guarda los archivos de la app de ventas en el celular para que abra sin internet.
  * Cuando hay señal, baja la versión nueva por detrás: se ve la próxima vez que se abra.
+ * Solo toca los archivos de la app de ventas; la página de pedidos (pedido.html) pasa directo.
  * Si cambia la lista de archivos, suba el número de VERSION.
  */
-var VERSION = 'usenda-1';
+var VERSION = 'usenda-2';
 var ARCHIVOS = ['./', './index.html', './config.js', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
+var RUTAS = ARCHIVOS.map(function (a) { return new URL(a, self.location.href).pathname; });
 
 self.addEventListener('install', function (e) {
   e.waitUntil(caches.open(VERSION).then(function (c) { return c.addAll(ARCHIVOS); }));
@@ -22,25 +24,18 @@ self.addEventListener('activate', function (e) {
 self.addEventListener('fetch', function (e) {
   var req = e.request;
   var url = new URL(req.url);
-  // Solo los archivos de la app. Lo que va a la hoja (Apps Script) y las fuentes pasan directo.
-  if (req.method !== 'GET' || url.origin !== self.location.origin) return;
+  // Lo que va a la hoja (Apps Script), las fuentes y cualquier otra página pasan directo.
+  if (req.method !== 'GET' || url.origin !== self.location.origin || RUTAS.indexOf(url.pathname) < 0) return;
+  var esIndex = url.pathname === RUTAS[0] || url.pathname === RUTAS[1];
+  var clave = esIndex ? './index.html' : req;
   e.respondWith(
     caches.open(VERSION).then(function (cache) {
-      return cache.match(req, { ignoreSearch: true }).then(function (guardado) {
-        var dePagina = req.mode === 'navigate';
+      return cache.match(clave, { ignoreSearch: true }).then(function (guardado) {
         var red = fetch(req).then(function (resp) {
-          if (resp && resp.ok) cache.put(dePagina ? './index.html' : req, resp.clone());
+          if (resp && resp.ok) cache.put(clave, resp.clone());
           return resp;
-        }).catch(function () {
-          return guardado || (dePagina ? cache.match('./index.html') : undefined);
         });
         if (guardado) { e.waitUntil(red.catch(function () {})); return guardado; }
-        if (dePagina) {
-          return cache.match('./index.html').then(function (idx) {
-            if (idx) { e.waitUntil(red.catch(function () {})); return idx; }
-            return red;
-          });
-        }
         return red;
       });
     })
